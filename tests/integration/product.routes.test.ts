@@ -255,6 +255,94 @@ describe("Product routes", () => {
     });
   });
 
+    it("rejects a zero product price", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku: `${testPrefix}ZERO-PRICE`,
+        name: "Zero Price Product",
+        price: "0",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+
+    expect(response.json()).toMatchObject({
+      error: "VALIDATION_ERROR",
+      message: "Invalid product data.",
+    });
+  });
+
+  it("rejects a zero product price with two decimal places", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku: `${testPrefix}ZERO-PRICE-DECIMAL`,
+        name: "Zero Price Decimal Product",
+        price: "0.00",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+
+    expect(response.json()).toMatchObject({
+      error: "VALIDATION_ERROR",
+      message: "Invalid product data.",
+    });
+  });
+
+  it("rejects a product price with more than two decimal places", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku: `${testPrefix}THREE-DECIMALS`,
+        name: "Three Decimal Product",
+        price: "100.001",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+
+    expect(response.json()).toMatchObject({
+      error: "VALIDATION_ERROR",
+      message: "Invalid product data.",
+    });
+  });
+
+  it("rejects a negative product price", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku: `${testPrefix}NEGATIVE-PRICE`,
+        name: "Negative Price Product",
+        price: "-10.00",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+
+    expect(response.json()).toMatchObject({
+      error: "VALIDATION_ERROR",
+      message: "Invalid product data.",
+    });
+    });
+
   it("rejects invalid product listing parameters", async () => {
     const response = await app.inject({
       method: "GET",

@@ -22,7 +22,7 @@ export const createProductSchema = z.object({
   price: z
     .string()
     .regex(
-      /^\d+(\.\d{1,2})?$/,
+      /^(?:[1-9]\d*)(?:\.\d{1,2})?$/,
       "Price must be a positive monetary value with at most 2 decimal places",
     ),
 
