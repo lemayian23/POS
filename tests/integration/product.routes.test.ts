@@ -171,6 +171,68 @@ describe("Product routes", () => {
     expect(body.product.price).toBe("150");
   });
 
+  it("rejects product creation when the SKU already exists", async () => {
+    const sku = `${testPrefix}DUPLICATE`;
+
+    const firstResponse = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku,
+        name: "First Product",
+        price: "100.00",
+      },
+    });
+
+    expect(firstResponse.statusCode).toBe(201);
+
+    const duplicateResponse = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku,
+        name: "Duplicate Product",
+        price: "200.00",
+      },
+    });
+
+    expect(duplicateResponse.statusCode).toBe(409);
+
+    expect(duplicateResponse.json()).toEqual({
+      error: "PRODUCT_SKU_ALREADY_EXISTS",
+      message: "A product with this SKU already exists.",
+    });
+  });
+
+  it("rejects product creation with a nonexistent category", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/products",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        sku: `${testPrefix}INVALID-CATEGORY`,
+        name: "Product With Invalid Category",
+        price: "100.00",
+        categoryId: "00000000-0000-4000-8000-000000000000",
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+
+    expect(response.json()).toEqual({
+      error: "PRODUCT_CATEGORY_NOT_FOUND",
+      message: "The specified product category does not exist.",
+    });
+  });
+
   it("rejects invalid product data", async () => {
     const response = await app.inject({
       method: "POST",
