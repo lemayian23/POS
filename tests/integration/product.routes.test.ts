@@ -400,4 +400,129 @@ describe("Product routes", () => {
       totalPages: 2,
     });
   });
+
+    it("filters products by active status", async () => {
+    const activeSku = `${testPrefix}ACTIVE-FILTER`;
+    const inactiveSku = `${testPrefix}INACTIVE-FILTER`;
+
+    await prisma.product.createMany({
+      data: [
+        {
+          sku: activeSku,
+          name: "Active Filter Product",
+          price: "30.00",
+          isActive: true,
+        },
+        {
+          sku: inactiveSku,
+          name: "Inactive Filter Product",
+          price: "40.00",
+          isActive: false,
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/products?search=${encodeURIComponent(testPrefix)}&isActive=false`,
+      headers: {
+        authorization: `Bearer ${staffToken}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const body = response.json();
+
+    expect(body.products).toHaveLength(1);
+    expect(body.products[0]).toMatchObject({
+      sku: inactiveSku,
+      name: "Inactive Filter Product",
+      isActive: false,
+    });
+  });
+
+  it("sorts products by price in descending order", async () => {
+    const sortPrefix = `${testPrefix}PRICE-SORT`;
+
+    await prisma.product.createMany({
+      data: [
+        {
+          sku: `${sortPrefix}-LOW`,
+          name: "Low Price Product",
+          price: "10.00",
+        },
+        {
+          sku: `${sortPrefix}-HIGH`,
+          name: "High Price Product",
+          price: "90.00",
+        },
+        {
+          sku: `${sortPrefix}-MID`,
+          name: "Mid Price Product",
+          price: "50.00",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/products?search=${encodeURIComponent(sortPrefix)}&sortBy=price&sortOrder=desc`,
+      headers: {
+        authorization: `Bearer ${staffToken}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const body = response.json();
+
+    expect(body.products.map((product: { sku: string }) => product.sku)).toEqual([
+      `${sortPrefix}-HIGH`,
+      `${sortPrefix}-MID`,
+      `${sortPrefix}-LOW`,
+    ]);
+  });
+
+  it("sorts products by SKU in ascending order", async () => {
+    const sortPrefix = `${testPrefix}SKU-SORT`;
+
+    await prisma.product.createMany({
+      data: [
+        {
+          sku: `${sortPrefix}-C`,
+          name: "SKU C Product",
+          price: "30.00",
+        },
+        {
+          sku: `${sortPrefix}-A`,
+          name: "SKU A Product",
+          price: "10.00",
+        },
+        {
+          sku: `${sortPrefix}-B`,
+          name: "SKU B Product",
+          price: "20.00",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/products?search=${encodeURIComponent(sortPrefix)}&sortBy=sku&sortOrder=asc`,
+      headers: {
+        authorization: `Bearer ${staffToken}`,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const body = response.json();
+
+    expect(body.products.map((product: { sku: string }) => product.sku)).toEqual([
+      `${sortPrefix}-A`,
+      `${sortPrefix}-B`,
+      `${sortPrefix}-C`,
+    ]);
+  });
 });
