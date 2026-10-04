@@ -525,4 +525,74 @@ describe("Product routes", () => {
       `${sortPrefix}-C`,
     ]);
   });
+
+    it("filters products by category and reports filtered pagination totals", async () => {
+    const category = await prisma.category.create({
+      data: {
+        name: `Product Route Category ${Date.now()}`,
+        description: "Category filter integration test",
+      },
+    });
+
+    const matchingSku = `${testPrefix}CATEGORY-MATCH`;
+    const otherSku = `${testPrefix}CATEGORY-OTHER`;
+
+    try {
+      await prisma.product.createMany({
+        data: [
+          {
+            sku: matchingSku,
+            name: "Matching Category Product",
+            price: "25.00",
+            categoryId: category.id,
+          },
+          {
+            sku: otherSku,
+            name: "Other Category Product",
+            price: "35.00",
+          },
+        ],
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/products?categoryId=${category.id}&page=1&pageSize=1`,
+        headers: {
+          authorization: `Bearer ${staffToken}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.products).toHaveLength(1);
+      expect(body.products[0]).toMatchObject({
+        sku: matchingSku,
+        name: "Matching Category Product",
+        categoryId: category.id,
+      });
+
+      expect(body.pagination).toEqual({
+        page: 1,
+        pageSize: 1,
+        total: 1,
+        totalPages: 1,
+      });
+    } finally {
+      await prisma.product.deleteMany({
+        where: {
+          sku: {
+            in: [matchingSku, otherSku],
+          },
+        },
+      });
+
+      await prisma.category.delete({
+        where: {
+          id: category.id,
+        },
+      });
+    }
+  });
 });
