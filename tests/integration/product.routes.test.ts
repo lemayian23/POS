@@ -595,4 +595,45 @@ describe("Product routes", () => {
       });
     }
   });
+
+  it("allows ADMIN to update an existing product", async () => {
+  const sku = `${testPrefix}UPDATE`;
+
+  const product = await prisma.product.create({
+    data: {
+      sku,
+      name: "Original Product Name",
+      price: "100.00",
+    },
+  });
+
+  try {
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/products/${product.id}`,
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        name: "Updated Product Name",
+        price: "150.00",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    expect(response.json().product).toMatchObject({
+      id: product.id,
+      sku,
+      name: "Updated Product Name",
+      price: "150",
+      isActive: true,
+      categoryId: null,
+    });
+  } finally {
+    await prisma.product.delete({
+      where: { id: product.id },
+    });
+  }
+  });
 });
