@@ -3,7 +3,11 @@ import { Prisma } from "../../generated/prisma/client.js";
 import { ApplicationError } from "../../app/application-error.js";
 import { prisma } from "../../lib/prisma.js";
 
-import type { CreateProductInput } from "./product.schema.js";
+import type {
+  CreateProductInput,
+  UpdateProductInput,
+} from "./product.schema.js";
+
 import type { ListProductsInput } from "./product-list.schema.js";
 
 export class ProductSkuAlreadyExistsError extends ApplicationError {
@@ -27,6 +31,18 @@ export class ProductCategoryNotFoundError extends ApplicationError {
     );
 
     this.name = "ProductCategoryNotFoundError";
+  }
+}
+
+export class ProductNotFoundError extends ApplicationError {
+  constructor() {
+    super(
+      "PRODUCT_NOT_FOUND",
+      "The specified product does not exist.",
+      404,
+    );
+
+    this.name = "ProductNotFoundError";
   }
 }
 
@@ -67,6 +83,60 @@ export async function createProduct(input: CreateProductInput) {
       }
 
       if (error.code === "P2025") {
+        throw new ProductCategoryNotFoundError();
+      }
+    }
+
+    throw error;
+  }
+}
+
+export async function updateProduct(
+  id: string,
+  input: UpdateProductInput,
+) {
+  try {
+    return await prisma.product.update({
+      where: {
+        id,
+      },
+      data: {
+        ...(input.sku !== undefined ? { sku: input.sku } : {}),
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.description !== undefined
+          ? { description: input.description }
+          : {}),
+        ...(input.price !== undefined ? { price: input.price } : {}),
+        ...(input.categoryId !== undefined
+          ? { categoryId: input.categoryId }
+          : {}),
+        ...(input.isActive !== undefined
+          ? { isActive: input.isActive }
+          : {}),
+      },
+      select: {
+        id: true,
+        sku: true,
+        name: true,
+        description: true,
+        price: true,
+        isActive: true,
+        categoryId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        throw new ProductSkuAlreadyExistsError();
+      }
+
+      if (error.code === "P2025") {
+        throw new ProductNotFoundError();
+      }
+
+      if (error.code === "P2003") {
         throw new ProductCategoryNotFoundError();
       }
     }
