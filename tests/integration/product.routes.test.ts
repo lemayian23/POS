@@ -807,4 +807,44 @@ describe("Product routes", () => {
       });
     }
   });
+
+    it("preserves unchanged fields during a partial product update", async () => {
+    const sku = `${testPrefix}UPDATE-PARTIAL`;
+
+    const product = await prisma.product.create({
+      data: {
+        sku,
+        name: "Original Product Name",
+        price: "100.00",
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+        },
+        payload: {
+          name: "Partially Updated Product Name",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      expect(response.json().product).toMatchObject({
+        id: product.id,
+        sku,
+        name: "Partially Updated Product Name",
+        price: "100",
+        isActive: true,
+        categoryId: null,
+      });
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+    }
+  });
 });
