@@ -847,4 +847,45 @@ describe("Product routes", () => {
       });
     }
   });
+
+    it("allows ADMIN to deactivate an existing product", async () => {
+    const sku = `${testPrefix}UPDATE-DEACTIVATE`;
+
+    const product = await prisma.product.create({
+      data: {
+        sku,
+        name: "Product To Deactivate",
+        price: "100.00",
+        isActive: true,
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+        },
+        payload: {
+          isActive: false,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      expect(response.json().product).toMatchObject({
+        id: product.id,
+        sku,
+        name: "Product To Deactivate",
+        price: "100",
+        isActive: false,
+        categoryId: null,
+      });
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+    }
+  });
 });
