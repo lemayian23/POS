@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import { categoryRoutes } from "../modules/categories/category.routes.js";
 
 import { env } from "../config/env.js";
 import { registerJwt } from "../plugins/jwt.js";
@@ -37,6 +38,8 @@ export async function buildApp() {
   await app.register(authRoutes);
   
   await app.register(productRoutes);
+
+  await app.register(categoryRoutes);
 
   await app.register(cookie);
 
