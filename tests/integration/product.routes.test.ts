@@ -636,4 +636,175 @@ describe("Product routes", () => {
     });
   }
   });
+
+    it("rejects unauthenticated product updates", async () => {
+    const sku = `${testPrefix}UPDATE-UNAUTH`;
+
+    const product = await prisma.product.create({
+      data: {
+        sku,
+        name: "Unauthenticated Update Product",
+        price: "100.00",
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        payload: {
+          name: "Should Not Update",
+        },
+      });
+
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+    }
+  });
+
+  it("rejects product updates by STAFF", async () => {
+    const sku = `${testPrefix}UPDATE-STAFF`;
+
+    const product = await prisma.product.create({
+      data: {
+        sku,
+        name: "Staff Update Product",
+        price: "100.00",
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        headers: {
+          authorization: `Bearer ${staffToken}`,
+        },
+        payload: {
+          name: "Should Not Update",
+        },
+      });
+
+      expect(response.statusCode).toBe(403);
+
+      expect(response.json()).toEqual({
+        error: "FORBIDDEN",
+        message: "You do not have permission to access this resource.",
+      });
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+    }
+  });
+
+    it("returns 404 when updating a nonexistent product", async () => {
+    const nonexistentProductId = "00000000-0000-4000-8000-000000000000";
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/products/${nonexistentProductId}`,
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        name: "Updated Product",
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+
+    expect(response.json()).toEqual({
+      error: "PRODUCT_NOT_FOUND",
+      message: "The specified product does not exist.",
+    });
+  });
+
+  it("rejects invalid product update data", async () => {
+    const sku = `${testPrefix}UPDATE-INVALID`;
+
+    const product = await prisma.product.create({
+      data: {
+        sku,
+        name: "Valid Product",
+        price: "100.00",
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+        },
+        payload: {
+          price: "invalid",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+
+      expect(response.json()).toMatchObject({
+        error: "VALIDATION_ERROR",
+        message: "Invalid product data.",
+      });
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+    }
+  });
+
+  it("rejects an update when the new SKU already exists", async () => {
+    const existingSku = `${testPrefix}UPDATE-SKU-EXISTING`;
+    const productSku = `${testPrefix}UPDATE-SKU-TARGET`;
+
+    const existingProduct = await prisma.product.create({
+      data: {
+        sku: existingSku,
+        name: "Existing SKU Product",
+        price: "100.00",
+      },
+    });
+
+    const product = await prisma.product.create({
+      data: {
+        sku: productSku,
+        name: "Product To Update",
+        price: "150.00",
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+        },
+        payload: {
+          sku: existingSku,
+        },
+      });
+
+      expect(response.statusCode).toBe(409);
+
+      expect(response.json()).toEqual({
+        error: "PRODUCT_SKU_ALREADY_EXISTS",
+        message: "A product with this SKU already exists.",
+      });
+    } finally {
+      await prisma.product.deleteMany({
+        where: {
+          id: {
+            in: [existingProduct.id, product.id],
+          },
+        },
+      });
+    }
+  });
 });
