@@ -153,7 +153,7 @@ export async function createSale(
     const sale = await tx.sale.create({
       data: {
         receiptNo,
-        customerId: input.customerId,
+        customerId: input.customerId ?? null,
         cashierId,
         status: SaleStatus.COMPLETED,
         subtotal,
@@ -175,7 +175,7 @@ export async function createSale(
         method: input.payment.method,
         status: "COMPLETED",
         amount: paymentAmount,
-        reference: input.payment.reference,
+        reference: input.payment.reference ?? null,
       },
     });
 
