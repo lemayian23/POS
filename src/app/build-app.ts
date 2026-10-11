@@ -13,6 +13,7 @@ import { errorHandler } from "./error-handler.js";
 import rateLimit from "@fastify/rate-limit";
 import cookie from "@fastify/cookie";
 import { productRoutes } from "../modules/products/product.routes.js";
+import { saleRoutes } from "../modules/sales/sale.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -43,6 +44,8 @@ export async function buildApp() {
   await app.register(categoryRoutes);
 
   await app.register(inventoryRoutes);
+
+  await app.register(saleRoutes);
 
   await app.register(cookie);
 
