@@ -1,3 +1,4 @@
+
 import {
   afterAll,
   beforeEach,
@@ -69,32 +70,30 @@ describe("Sale routes", () => {
       },
     });
 
-    await prisma.payment.deleteMany({
+        await prisma.payment.deleteMany({
       where: {
         sale: {
-          items: {
-            some: {
-              product: {
-                sku: {
-                  startsWith: "SALE-",
-                },
-              },
+          cashier: {
+            email: {
+              startsWith: "sales-cashier-",
             },
           },
         },
       },
     });
 
-    await prisma.saleItem.deleteMany({
+    await prisma.sale.deleteMany({
       where: {
-        product: {
-          sku: {
-            startsWith: "SALE-",
+        cashier: {
+          email: {
+            startsWith: "sales-cashier-",
           },
         },
       },
     });
 
+    // Delete sales before products and cashier users.
+    // Deleting a sale also deletes its items through the configured cascade.
     await prisma.sale.deleteMany({
       where: {
         items: {
@@ -187,10 +186,10 @@ describe("Sale routes", () => {
 
     expect(body.sale).toMatchObject({
       status: "COMPLETED",
-      subtotal: 200,
-      discount: 0,
-      tax: 0,
-      total: 200,
+      subtotal: "200",
+      discount: "0",
+      tax: "0",
+      total: "200",
     });
 
     const inventory = await prisma.inventoryItem.findUnique({
@@ -239,24 +238,50 @@ describe("Sale routes", () => {
       },
     });
 
-    expect(sale?.items).toHaveLength(1);
-    expect(sale?.items[0]).toMatchObject({
+    expect(sale).not.toBeNull();
+
+    if (!sale) {
+      throw new Error("Expected the created sale to exist");
+    }
+
+    expect(sale.items).toHaveLength(1);
+
+    const saleItem = sale.items[0];
+
+    expect(saleItem).toBeDefined();
+
+    if (!saleItem) {
+      throw new Error("Expected a sale item to be created");
+    }
+
+    expect(saleItem).toMatchObject({
       productId,
       quantity: 3,
-      unitPrice: "100",
-      lineTotal: "300",
     });
 
-    expect(sale?.payments).toHaveLength(1);
-    expect(sale?.payments[0]).toMatchObject({
+    expect(saleItem.unitPrice.toString()).toBe("100");
+    expect(saleItem.lineTotal.toString()).toBe("300");
+
+    expect(sale.payments).toHaveLength(1);
+
+    const payment = sale.payments[0];
+
+    expect(payment).toBeDefined();
+
+    if (!payment) {
+      throw new Error("Expected a payment to be created");
+    }
+
+    expect(payment).toMatchObject({
       method: "MOBILE_MONEY",
       status: "COMPLETED",
-      amount: "300",
       reference: "MPESA-TEST-001",
     });
 
-    expect(sale?.stockMovements).toHaveLength(1);
-    expect(sale?.stockMovements[0]).toMatchObject({
+    expect(payment.amount.toString()).toBe("300");
+
+    expect(sale.stockMovements).toHaveLength(1);
+    expect(sale.stockMovements[0]).toMatchObject({
       type: "SALE",
       quantity: 3,
     });
@@ -308,7 +333,6 @@ describe("Sale routes", () => {
     });
 
     expect(response.statusCode).toBe(400);
-
     expect(response.json().error).toBe("VALIDATION_ERROR");
   });
 });
