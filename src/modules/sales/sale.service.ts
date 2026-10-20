@@ -1,3 +1,4 @@
+
 import {
   Prisma,
   SaleStatus,
@@ -46,9 +47,7 @@ export async function createSale(
   return prisma.$transaction(async (tx) => {
     if (input.customerId) {
       const customer = await tx.customer.findUnique({
-        where: {
-          id: input.customerId,
-        },
+        where: { id: input.customerId },
       });
 
       if (!customer) {
@@ -62,9 +61,7 @@ export async function createSale(
 
     const products = await tx.product.findMany({
       where: {
-        id: {
-          in: productIds,
-        },
+        id: { in: productIds },
         isActive: true,
       },
     });
@@ -121,9 +118,7 @@ export async function createSale(
       );
     }
 
-    const paymentAmount = new Prisma.Decimal(
-      input.payment.amount,
-    );
+    const paymentAmount = new Prisma.Decimal(input.payment.amount);
 
     if (!paymentAmount.equals(total)) {
       throw new ApplicationError(
@@ -133,16 +128,45 @@ export async function createSale(
       );
     }
 
+    // Aggregate duplicate product lines before checking or deducting stock.
+    const requestedQuantities = new Map<string, number>();
+
     for (const item of input.items) {
+      const current =
+        requestedQuantities.get(item.productId) ?? 0;
+
+      requestedQuantities.set(
+        item.productId,
+        current + item.quantity,
+      );
+    }
+
+    // Fetch inventory records before creating the sale.
+    // The quantities returned here are not trusted for the final deduction:
+    // each deduction below also checks the current quantity atomically.
+    const inventoryByProduct = new Map<
+      string,
+      { id: string; quantity: number }
+    >();
+
+    for (const productId of requestedQuantities.keys()) {
       const inventory = await tx.inventoryItem.findUnique({
-        where: {
-          productId: item.productId,
+        where: { productId },
+        select: {
+          id: true,
+          quantity: true,
         },
       });
 
-      if (!inventory || inventory.quantity < item.quantity) {
+      if (!inventory) {
         throw new InsufficientSaleStockError();
       }
+
+      if (inventory.quantity < (requestedQuantities.get(productId) ?? 0)) {
+        throw new InsufficientSaleStockError();
+      }
+
+      inventoryByProduct.set(productId, inventory);
     }
 
     const receiptNo = `POS-${Date.now()}-${Math.random()
@@ -164,10 +188,41 @@ export async function createSale(
           create: saleItems,
         },
       },
-      include: {
-        items: true,
-      },
     });
+
+    // Conditionally decrement stock in the database.
+    // Concurrent requests cannot both deduct units that are no longer available.
+    for (const [productId, quantity] of requestedQuantities) {
+      const inventory = inventoryByProduct.get(productId);
+
+      if (!inventory) {
+        throw new InsufficientSaleStockError();
+      }
+
+      const deduction = await tx.inventoryItem.updateMany({
+        where: {
+          id: inventory.id,
+          quantity: { gte: quantity },
+        },
+        data: {
+          quantity: { decrement: quantity },
+        },
+      });
+
+      if (deduction.count !== 1) {
+        throw new InsufficientSaleStockError();
+      }
+
+      await tx.stockMovement.create({
+        data: {
+          inventoryItemId: inventory.id,
+          type: StockMovementType.SALE,
+          quantity,
+          saleId: sale.id,
+          createdById: cashierId,
+        },
+      });
+    }
 
     await tx.payment.create({
       data: {
@@ -179,39 +234,12 @@ export async function createSale(
       },
     });
 
-    for (const item of input.items) {
-      const inventory = await tx.inventoryItem.update({
-        where: {
-          productId: item.productId,
-        },
-        data: {
-          quantity: {
-            decrement: item.quantity,
-          },
-        },
-      });
-
-      await tx.stockMovement.create({
-        data: {
-          inventoryItemId: inventory.id,
-          type: StockMovementType.SALE,
-          quantity: item.quantity,
-          saleId: sale.id,
-          createdById: cashierId,
-        },
-      });
-    }
-
-    const completedSale = await tx.sale.findUniqueOrThrow({
-      where: {
-        id: sale.id,
-      },
+    return tx.sale.findUniqueOrThrow({
+      where: { id: sale.id },
       include: {
         items: true,
         payments: true,
       },
     });
-
-    return completedSale;
   });
 }

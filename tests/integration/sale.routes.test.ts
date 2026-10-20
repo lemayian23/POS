@@ -316,6 +316,47 @@ describe("Sale routes", () => {
     });
   });
 
+    it("rejects duplicate product lines when their combined quantity exceeds stock", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/sales",
+      headers: {
+        authorization: `Bearer ${cashierToken}`,
+      },
+      payload: {
+        items: [
+          {
+            productId,
+            quantity: 6,
+          },
+          {
+            productId,
+            quantity: 6,
+          },
+        ],
+        payment: {
+          method: "CASH",
+          amount: 1200,
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+
+    expect(response.json()).toEqual({
+      error: "INSUFFICIENT_STOCK",
+      message: "Insufficient stock for this sale.",
+    });
+
+    const inventory = await prisma.inventoryItem.findUnique({
+      where: {
+        productId,
+      },
+    });
+
+    expect(inventory?.quantity).toBe(10);
+  });
+
   it("rejects invalid sale data", async () => {
     const response = await app.inject({
       method: "POST",
