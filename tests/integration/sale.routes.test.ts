@@ -357,6 +357,54 @@ describe("Sale routes", () => {
     expect(inventory?.quantity).toBe(10);
   });
 
+    it("prevents overselling when two sales compete for the same stock", async () => {
+    const makeSale = () =>
+      app.inject({
+        method: "POST",
+        url: "/sales",
+        headers: {
+          authorization: `Bearer ${cashierToken}`,
+        },
+        payload: {
+          items: [{ productId, quantity: 6 }],
+          payment: {
+            method: "CASH",
+            amount: 600,
+          },
+        },
+      });
+
+    const responses = await Promise.all([
+      makeSale(),
+      makeSale(),
+    ]);
+
+    expect(
+      responses.map((response) => response.statusCode).sort(),
+    ).toEqual([201, 409]);
+
+    const inventory = await prisma.inventoryItem.findUnique({
+      where: { productId },
+    });
+
+    expect(inventory?.quantity).toBe(4);
+
+    const sales = await prisma.sale.findMany({
+      where: {
+        items: {
+          some: { productId },
+        },
+      },
+      include: {
+        stockMovements: true,
+      },
+    });
+
+    expect(sales).toHaveLength(1);
+    expect(sales[0]?.stockMovements).toHaveLength(1);
+    expect(sales[0]?.stockMovements[0]?.quantity).toBe(6);
+  });
+
   it("rejects invalid sale data", async () => {
     const response = await app.inject({
       method: "POST",
