@@ -723,6 +723,45 @@ describe("Product routes", () => {
     });
   });
 
+  it("rejects updating a product with a nonexistent category", async () => {
+  const product = await prisma.product.create({
+    data: {
+      sku: `${testPrefix}UPDATE-INVALID-CATEGORY`,
+      name: "Product With Existing Data",
+      price: "100.00",
+    },
+  });
+
+  try {
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/products/${product.id}`,
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      payload: {
+        categoryId: "00000000-0000-4000-8000-000000000000",
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: "PRODUCT_CATEGORY_NOT_FOUND",
+      message: "The specified product category does not exist.",
+    });
+
+    const unchangedProduct = await prisma.product.findUniqueOrThrow({
+      where: { id: product.id },
+    });
+
+    expect(unchangedProduct.categoryId).toBeNull();
+  } finally {
+    await prisma.product.delete({
+      where: { id: product.id },
+    });
+  }
+});
+
   it("rejects invalid product update data", async () => {
     const sku = `${testPrefix}UPDATE-INVALID`;
 
