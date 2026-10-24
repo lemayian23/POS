@@ -202,6 +202,7 @@ export async function createSale(
       const deduction = await tx.inventoryItem.updateMany({
         where: {
           id: inventory.id,
+          productId,
           quantity: { gte: quantity },
         },
         data: {
