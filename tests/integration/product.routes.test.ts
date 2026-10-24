@@ -637,6 +637,55 @@ describe("Product routes", () => {
   }
   });
 
+  
+  it("allows ADMIN to clear an existing product category", async () => {
+    const category = await prisma.category.create({
+      data: {
+        name: `${testPrefix}CLEAR-CATEGORY`,
+      },
+    });
+
+    const product = await prisma.product.create({
+      data: {
+        sku: `${testPrefix}CLEAR-CATEGORY`,
+        name: "Categorized Product",
+        price: "100.00",
+        categoryId: category.id,
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/products/${product.id}`,
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+        },
+        payload: {
+          categoryId: null,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().product.categoryId).toBeNull();
+
+      const updatedProduct = await prisma.product.findUniqueOrThrow({
+        where: { id: product.id },
+      });
+
+      expect(updatedProduct.categoryId).toBeNull();
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+
+      await prisma.category.delete({
+        where: { id: category.id },
+      });
+    }
+  });
+
+
     it("rejects unauthenticated product updates", async () => {
     const sku = `${testPrefix}UPDATE-UNAUTH`;
 
