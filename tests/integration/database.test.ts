@@ -66,4 +66,83 @@ describe("Database transaction helper", () => {
 
     expect(storedUser).toBeNull();
   });
+
+  it("rejects negative inventory quantities at the database level", async () => {
+    const product = await prisma.product.create({
+      data: {
+        name: `Constraint Test Products ${Date.now()}`,
+        sku: `CONSTRAINT-${Date.now()}`,
+        price: 100,
+      },
+    });
+
+    try {
+      const inventory = await prisma.inventoryItem.create({
+        data: {
+          productId: product.id,
+          quantity: 0,
+        },
+      });
+
+      await expect(
+        prisma.inventoryItem.update({
+          where: { id: inventory.id },
+          data: { quantity: -1 },
+        }),
+      ).rejects.toThrow();
+
+      const unchangedInventory = await prisma.inventoryItem.findUnique({
+        where: { id: inventory.id },
+      });
+
+      expect(unchangedInventory?.quantity).toBe(0);
+    } finally {
+      await prisma.product.deleteMany({
+        where: {sku: { startsWith: "CONSTRAINT-"} },
+      });
+    }
+  });
+
+  it("rejects negative inventory quantities at the database level", async () => {
+    const sku = `CONSTRAINT-${Date.now()}`;
+
+    const product = await prisma.product.create({
+      data: {
+        name: "Constraint Test Product",
+        sku,
+        price: 100,
+      },
+    });
+
+    try {
+      const inventory = await prisma.inventoryItem.create({
+        data: {
+          productId: product.id,
+          quantity: 0,
+        },
+      });
+
+      // Zero is valid
+      expect(inventory.quantity).toBe(0);
+
+      // PostgreSQL must reject negative stock.
+      await expect(
+        prisma.inventoryItem.update({
+          where: { id: inventory.id },
+          data: { quantity: -1 },
+        }),
+      ).rejects.toThrow();
+
+      // The rejected update must not change the stored quantity.
+      const storedInventory = await prisma.inventoryItem.findUniqueOrThrow({
+        where: { id: inventory.id },
+      });
+
+      expect(storedInventory.quantity).toBe(0);
+    } finally {
+      await prisma.product.delete({
+        where: { id: product.id },
+      });
+    }
+  });
 });
