@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2457d6">
+  <title>Point of Sale | Web POS</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/pos.js" defer></script>
+</head>
+<body class="pos-page">
+  <header class="topbar">
+    <a class="brand" href="/dashboard.html">
+      <span class="brand-mark">W</span>
+      <span>Web POS</span>
+    </a>
+    <div class="user-area">
+      <a class="button-link" href="/dashboard.html">Dashboard</a>
+      <button id="logout-button" class="button-secondary" type="button">
+        Sign out
+      </button>
+    </div>
+  </header>
+
+  <main class="pos-layout">
+    <section class="catalog-panel" aria-labelledby="catalog-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">CASHIER WORKSPACE</p>
+          <h1 id="catalog-title">New sale</h1>
+          <p class="muted">Find products and add them to the cart.</p>
+        </div>
+      </div>
+
+      <label for="product-search">Search products</label>
+      <input
+        id="product-search"
+        type="search"
+        placeholder="Search by product name or SKU"
+        autocomplete="off"
+      >
+
+      <p id="catalog-status" class="muted" role="status">
+        Loading products…
+      </p>
+      <div id="product-grid" class="product-grid"></div>
+
+      <div class="catalog-pagination">
+        <button id="previous-page" class="button-secondary" type="button">
+          Previous
+        </button>
+        <span id="page-label" class="muted">Page 1</span>
+        <button id="next-page" class="button-secondary" type="button">
+          Next
+        </button>
+      </div>
+    </section>
+
+    <aside class="cart-panel" aria-labelledby="cart-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">CURRENT TRANSACTION</p>
+          <h2 id="cart-title">Your cart</h2>
+        </div>
+        <button id="clear-cart" class="button-secondary" type="button">
+          Clear
+        </button>
+      </div>
+
+      <p id="cart-status" class="muted" role="status">
+        Your cart is empty.
+      </p>
+      <div id="cart-items" class="cart-items"></div>
+
+      <div class="totals">
+        <div><span>Subtotal</span><strong id="subtotal">KES 0.00</strong></div>
+        <div class="grand-total">
+          <span>Total</span><strong id="total">KES 0.00</strong>
+        </div>
+        <p class="muted">Tax and discounts are not applied in this first version.</p>
+      </div>
+
+      <form id="checkout-form">
+        <label for="payment-method">Payment method</label>
+        <select id="payment-method" required>
+          <option value="CASH">Cash</option>
+          <option value="MOBILE_MONEY">Mobile money</option>
+          <option value="CARD">Card</option>
+          <option value="OTHER">Other</option>
+        </select>
+
+        <label for="payment-reference">Payment reference (optional)</label>
+        <input
+          id="payment-reference"
+          type="text"
+          maxlength="255"
+          placeholder="Transaction reference"
+        >
+
+        <p id="checkout-error" class="error" role="alert" hidden></p>
+
+        <button id="checkout-button" type="submit" disabled>
+          Complete sale
+        </button>
+      </form>
+    </aside>
+  </main>
+
+  <dialog id="receipt-dialog" class="receipt-dialog">
+    <div class="receipt-content">
+      <p class="eyebrow">SALE COMPLETED</p>
+      <h2>Receipt</h2>
+      <div id="receipt-details"></div>
+      <div class="receipt-actions">
+        <button id="print-receipt" type="button">Print receipt</button>
+        <button id="new-sale" class="button-secondary" type="button">
+          New sale
+        </button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>

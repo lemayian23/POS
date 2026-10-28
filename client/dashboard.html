@@ -1,0 +1,82 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Web POS management dashboard">
+  <title>Dashboard | Web POS</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/dashboard.js" defer></script>
+</head>
+<body class="dashboard-page">
+  <header class="topbar">
+    <a class="brand" href="/dashboard.html">
+      <span class="brand-mark">P</span>
+      <span>Web POS</span>
+    </a>
+
+    <div class="user-area">
+      <div>
+        <strong id="user-email">Loading account…</strong>
+        <span id="user-role" class="muted">Verifying access</span>
+      </div>
+      <button id="logout-button" class="button-secondary" type="button">
+        Sign out
+      </button>
+    </div>
+  </header>
+
+  <main class="dashboard-content">
+    <section class="welcome-section">
+      <p class="eyebrow">OVERVIEW</p>
+      <h1>Dashboard</h1>
+      <p class="muted">Your starting point for daily store operations.</p>
+    </section>
+
+    <p id="dashboard-error" class="error" role="alert" hidden></p>
+
+    <section class="status-card" aria-labelledby="status-heading">
+      <div>
+        <h2 id="status-heading">Application status</h2>
+        <p class="muted">Live authentication and API verification.</p>
+      </div>
+      <span id="api-status" class="status-indicator">Checking…</span>
+    </section>
+
+    <section class="module-grid" aria-label="Application modules">
+      <article class="module-card">
+        <span class="module-icon" aria-hidden="true">↔</span>
+        <h2>Point of sale</h2>
+        <p class="muted">Browse products, build a cart, and record customer payments.</p>
+        <span class="module-state">Next module</span>
+      </article>
+
+      <article class="module-card">
+        <span class="module-icon" aria-hidden="true">▦</span>
+        <h2>Products and categories</h2>
+        <p class="muted">Manage the product catalogue and its categories.</p>
+        <span class="module-state">Next module</span>
+      </article>
+
+      <article class="module-card">
+        <span class="module-icon" aria-hidden="true">▤</span>
+        <h2>Inventory</h2>
+        <p class="muted">Review stock levels and record authorised adjustments.</p>
+        <span class="module-state">Next module</span>
+      </article>
+
+      <article class="module-card">
+        <span class="module-icon" aria-hidden="true">◷</span>
+        <h2>Sales history</h2>
+        <p class="muted">Review completed transactions and payment records.</p>
+        <span class="module-state">API work required</span>
+      </article>
+    </section>
+
+    <footer class="dashboard-footer">
+      Web POS · Authenticated workspace
+    </footer>
+  </main>
+</body>
+</html>

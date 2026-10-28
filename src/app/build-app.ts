@@ -1,6 +1,9 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import fastifyStatic from "@fastify/static";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { categoryRoutes } from "../modules/categories/category.routes.js";
 import { inventoryRoutes } from "../modules/inventory/inventory.routes.js";
 
@@ -20,6 +23,10 @@ export async function buildApp() {
     logger: true,
   });
 
+  const currentFile = fileURLToPath(import.meta.url);
+  const currentDirectory = path.dirname(currentFile);
+  const clientDirectory = path.resolve(currentDirectory, "../../client");
+
 
   app.setErrorHandler(errorHandler);
 
@@ -31,11 +38,20 @@ export async function buildApp() {
 
   await app.register(helmet);
 
+  await app.register(fastifyStatic, {
+    root: clientDirectory,
+    prefix: "/",
+    index: false,
+    wildcard: false,
+  });
+
   await app.register(cors, {
     origin: env.CORS_ORIGIN,
   });
 
   await registerJwt(app);
+
+  await app.register(cookie);
 
   await app.register(authRoutes);
   
@@ -47,12 +63,14 @@ export async function buildApp() {
 
   await app.register(saleRoutes);
 
-  await app.register(cookie);
-
   app.get("/health", async () => {
     return {
       status: "ok",
     };
+  });
+
+  app.get("/", async (_request, reply) => {
+    return reply.redirect("/login.html");
   });
 app.get(
   "/protected",
