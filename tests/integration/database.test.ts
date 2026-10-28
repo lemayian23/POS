@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "../../src/lib/prisma.js";
 import { withTransaction } from "../../src/lib/database.js";
@@ -25,20 +25,18 @@ describe("Database transaction helper", () => {
       });
     });
 
-    const storedUser = await prisma.user.findUnique({
-      where: {
-        id: user.id,
-      },
-    });
+    try {
+      const storedUser = await prisma.user.findUnique({
+        where: { id: user.id },
+      });
 
-    expect(storedUser).not.toBeNull();
-    expect(storedUser?.email).toBe(email);
-
-    await prisma.user.delete({
-      where: {
-        id: user.id,
-      },
-    });
+      expect(storedUser).not.toBeNull();
+      expect(storedUser?.email).toBe(email);
+    } finally {
+      await prisma.user.delete({
+        where: { id: user.id },
+      });
+    }
   });
 
   it("rolls back changes when the transaction fails", async () => {
@@ -59,56 +57,19 @@ describe("Database transaction helper", () => {
     ).rejects.toThrow("Force transaction rollback");
 
     const storedUser = await prisma.user.findUnique({
-      where: {
-        email,
-      },
+      where: { email },
     });
 
     expect(storedUser).toBeNull();
   });
 
   it("rejects negative inventory quantities at the database level", async () => {
-    const product = await prisma.product.create({
-      data: {
-        name: `Constraint Test Products ${Date.now()}`,
-        sku: `CONSTRAINT-${Date.now()}`,
-        price: 100,
-      },
-    });
-
-    try {
-      const inventory = await prisma.inventoryItem.create({
-        data: {
-          productId: product.id,
-          quantity: 0,
-        },
-      });
-
-      await expect(
-        prisma.inventoryItem.update({
-          where: { id: inventory.id },
-          data: { quantity: -1 },
-        }),
-      ).rejects.toThrow();
-
-      const unchangedInventory = await prisma.inventoryItem.findUnique({
-        where: { id: inventory.id },
-      });
-
-      expect(unchangedInventory?.quantity).toBe(0);
-    } finally {
-      await prisma.product.deleteMany({
-        where: {sku: { startsWith: "CONSTRAINT-"} },
-      });
-    }
-  });
-
-  it("rejects negative inventory quantities at the database level", async () => {
-    const sku = `CONSTRAINT-${Date.now()}`;
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sku = `CONSTRAINT-${suffix}`;
 
     const product = await prisma.product.create({
       data: {
-        name: "Constraint Test Product",
+        name: `Constraint Test Product ${suffix}`,
         sku,
         price: 100,
       },
@@ -122,10 +83,10 @@ describe("Database transaction helper", () => {
         },
       });
 
-      // Zero is valid
+      // Zero is a valid inventory quantity.
       expect(inventory.quantity).toBe(0);
 
-      // PostgreSQL must reject negative stock.
+      // PostgreSQL must reject negative inventory.
       await expect(
         prisma.inventoryItem.update({
           where: { id: inventory.id },
@@ -133,7 +94,7 @@ describe("Database transaction helper", () => {
         }),
       ).rejects.toThrow();
 
-      // The rejected update must not change the stored quantity.
+      // The failed update must leave the stored quantity unchanged.
       const storedInventory = await prisma.inventoryItem.findUniqueOrThrow({
         where: { id: inventory.id },
       });
