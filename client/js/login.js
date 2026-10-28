@@ -48,7 +48,7 @@ form.addEventListener("submit", async (event) => {
     sessionStorage.setItem("web_pos_token", result.token);
     sessionStorage.setItem("web_pos_user", JSON.stringify(result.user));
 
-    window.location.assign("/dashboard.html");
+    window.location.assign("/pos.html");
   } catch (error) {
     errorMessage.textContent =
       error instanceof Error
